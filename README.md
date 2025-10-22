@@ -1,7 +1,13 @@
 # LangChain- Develop AI Agents with LangChain & LangGraph 🦜🔗
 
 **Learn LangChain and LangGraph by building real world AI Agents (Python, Latest Version 0.3.0+)**
-
+    "black>=25.9.0",
+    "isort>=7.0.0",
+    "langchain>=1.0.0",
+    "langchain-openai>=1.0.0",
+    "langchain-tavily>=0.2.12",
+    "langchainhub>=0.1.21",
+    "python-dotenv>=1.1.1",
 This course is designed to teach you how to QUICKLY harness the power of the LangChain library for LLM applications. Build 3 end-to-end working LangChain based generative AI applications with no fluff, no toy examples - just real projects using real APIs and real-world skills.
 
 ![LangChain Logo](/static/LangChain-logo.svg)
