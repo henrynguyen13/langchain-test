@@ -1,63 +1,35 @@
 from dotenv import load_dotenv
-
 load_dotenv()
 
-from langchain import hub
-from langchain.agents import AgentExecutor
-from langchain.agents.react.agent import create_react_agent
-# from langchain_core.output_parsers.pydantic import PydanticOutputParser
-from langchain_core.prompts import PromptTemplate
-from langchain_core.runnables import RunnableLambda 
-from langchain_openai import ChatOpenAI
-from langchain_tavily import TavilySearch
-
+from langchain.agents import create_agent
 from prompt import REACT_PROMPT_WITH_FORMAT_INSTRSUCTIONS
 from schemas import AgentResponse
+from langchain_tavily import TavilySearch
 
+# Khởi tạo tools
 tools = [TavilySearch()]
-llm = ChatOpenAI(model="gpt-4")
-react_prompt = hub.pull("hwchase17/react")
 
-# output_parser = PydanticOutputParser(pydantic_object=AgentResponse)
+# Khởi tạo model
 
 
-structured_llm = llm.with_structured_output(AgentResponse)
-# react_prompt_with_format_instructions = PromptTemplate(
-#     input_variables=["input", "agent_scrathpad", "tool_names"],
-#     template=REACT_PROMPT_WITH_FORMAT_INSTRSUCTIONS,
-# ).partial(format_instructions=output_parser.get_format_instructions())
-react_prompt_with_format_instructions = PromptTemplate(
-    input_variables=["input", "agent_scrathpad", "tool_names"],
-    template=REACT_PROMPT_WITH_FORMAT_INSTRSUCTIONS,
-).partial(format_instructions="")
-
-# agent = create_react_agent(
-#     llm=llm,
-#     tools=tools,
-#     prompt=react_prompt,
-# )
-
-
-agent = create_react_agent(
-    llm=llm,
+# Khởi tạo agent mới sử dụng create_agent
+agent = create_agent(
+    model="gpt-4",
     tools=tools,
-    prompt=react_prompt_with_format_instructions,
+    system_prompt=REACT_PROMPT_WITH_FORMAT_INSTRSUCTIONS,
+    response_format=AgentResponse,  
 )
-agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
-extract_output = RunnableLambda(lambda x: x["output"])
-# parrse_output = RunnableLambda(lambda x: output_parser.parse(x))
 
-
-chain = agent_executor | extract_output | structured_llm
-
+# Sử dụng invoke trực tiếp
 def main():
-    result = chain.invoke(
-        input={
-            "input": "search for 3 job postings for an ai engineer using langchain in the bay area on linkedin and list their details",
+    result = agent.invoke(
+        {
+            "messages": [
+                {"role": "user", "content": "search for 3 job postings for an ai engineer using langchain in the bay area on linkedin and list their details"}
+            ]
         }
     )
     print(result)
-
 
 if __name__ == "__main__":
     main()
