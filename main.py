@@ -1,63 +1,31 @@
+import os
 from dotenv import load_dotenv
+from langchain_core.prompts import PromptTemplate
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain_pinecone import PineconeVectorStore
+from langchain import hub
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain.chains.retrieval import create_retrieval_chain
 
 load_dotenv()
 
-from langchain import hub
-from langchain.agents import AgentExecutor
-from langchain.agents.react.agent import create_react_agent
-# from langchain_core.output_parsers.pydantic import PydanticOutputParser
-from langchain_core.prompts import PromptTemplate
-from langchain_core.runnables import RunnableLambda 
-from langchain_openai import ChatOpenAI
-from langchain_tavily import TavilySearch
-
-from prompt import REACT_PROMPT_WITH_FORMAT_INSTRSUCTIONS
-from schemas import AgentResponse
-
-tools = [TavilySearch()]
-llm = ChatOpenAI(model="gpt-4")
-react_prompt = hub.pull("hwchase17/react")
-
-# output_parser = PydanticOutputParser(pydantic_object=AgentResponse)
-
-
-structured_llm = llm.with_structured_output(AgentResponse)
-# react_prompt_with_format_instructions = PromptTemplate(
-#     input_variables=["input", "agent_scrathpad", "tool_names"],
-#     template=REACT_PROMPT_WITH_FORMAT_INSTRSUCTIONS,
-# ).partial(format_instructions=output_parser.get_format_instructions())
-react_prompt_with_format_instructions = PromptTemplate(
-    input_variables=["input", "agent_scrathpad", "tool_names"],
-    template=REACT_PROMPT_WITH_FORMAT_INSTRSUCTIONS,
-).partial(format_instructions="")
-
-# agent = create_react_agent(
-#     llm=llm,
-#     tools=tools,
-#     prompt=react_prompt,
-# )
-
-
-agent = create_react_agent(
-    llm=llm,
-    tools=tools,
-    prompt=react_prompt_with_format_instructions,
-)
-agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
-extract_output = RunnableLambda(lambda x: x["output"])
-# parrse_output = RunnableLambda(lambda x: output_parser.parse(x))
-
-
-chain = agent_executor | extract_output | structured_llm
-
-def main():
-    result = chain.invoke(
-        input={
-            "input": "search for 3 job postings for an ai engineer using langchain in the bay area on linkedin and list their details",
-        }
-    )
-    print(result)
-
 
 if __name__ == "__main__":
-    main()
+    print("Retrieving...")
+    embeddings = OpenAIEmbeddings()
+    llm = ChatOpenAI()
+
+    query = "What is Pinecone in machine learning?"
+    # chain = PromptTemplate.from_template(template=query) | llm
+    # result = chain.invoke(input={})
+    # print(result.content)
+
+    vectorstore = PineconeVectorStore(index_name=os.environ["INDEX_NAME"], embedding=embeddings)
+    
+    retrieval_qa_chat_prompt = hub.pull("langchain-ai/retrieval-qa-chat")
+
+    combine_docs_chain = create_stuff_documents_chain(llm, retrieval_qa_chat_prompt)
+    retrieval_chain = create_retrieval_chain(retriever=vectorstore.as_retriever(), combine_docs_chain=combine_docs_chain)
+
+    result = retrieval_chain.invoke({"input": query})
+    print(result)
